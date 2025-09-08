@@ -1,0 +1,3 @@
+C:/dev/MessageU/cmake-build-debug/CMakeFiles/MessageU.dir
+C:/dev/MessageU/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/dev/MessageU/cmake-build-debug/CMakeFiles/rebuild_cache.dir
