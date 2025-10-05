@@ -9,7 +9,7 @@
 
 std::vector<std::string> get_data_from_file(std::ifstream &f ){
        if(!f.is_open()) {
-           std::cerr << "File not open";
+           std::cerr << "File not open\n";
            return {};
        }
     std::string line;
@@ -21,6 +21,15 @@ std::vector<std::string> get_data_from_file(std::ifstream &f ){
     std::string ip = get_ip_from_str(line);
     std::string port = get_port_from_str(line);
 
+
+    //no ip, nothing to return
+    if(ip.empty()) {
+        return {};
+    }
+    //fallback to default
+    if(port.empty()) {
+        port = DEFAULT_PORT;
+    }
     return {ip, port};
     }
 std::string get_ip_from_str(std::string & str ){

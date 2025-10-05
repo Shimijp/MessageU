@@ -6,6 +6,7 @@
 #define READPORT_H
 
 #endif //READPORT_H
+#define DEFAULT_PORT "1234"
 #include <iostream>
 #include <vector>
 #include <fstream>
