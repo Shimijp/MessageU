@@ -6,7 +6,7 @@
 ClientD::ClientD(std::string name) {
     this->name = std::move(name);
     this->uuid = UUID16{};
-    this->rsaPrivate = RSAPrivateWrapper();
+    this->rsaPrivate = new RSAPrivateWrapper();
 }
 std::string ClientD::getName()  const{
     return name;
@@ -15,10 +15,10 @@ UUID16 ClientD::getUUID() const {
     return uuid;
 }
 std::string ClientD::getRSAPublic() const {
-    return rsaPrivate.getPublicKey();
+    return rsaPrivate->getPublicKey();
 }
 std::string ClientD::getPrivateKeyBase64() const {
-    return Base64Wrapper::encode(rsaPrivate.getPrivateKey());
+    return Base64Wrapper::encode(rsaPrivate->getPrivateKey());
 }
 uint8_t ClientD::getVersion() const {
     return version;
@@ -30,7 +30,7 @@ void ClientD::setClientName(const std::string& newName) {
     this->name = newName;
 }
 void ClientD::setRSAPrivateKeyFromBase64(const std::string& base64Key) {
-    this->rsaPrivate = RSAPrivateWrapper(Base64Wrapper::decode(base64Key));
+    this->rsaPrivate =new  RSAPrivateWrapper(Base64Wrapper::decode(base64Key));
 }
 
 

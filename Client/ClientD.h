@@ -22,7 +22,7 @@ typedef struct  UUID16
 class ClientD {
     std::string name;
     UUID16 uuid;
-    RSAPrivateWrapper rsaPrivate;
+    RSAPrivateWrapper *rsaPrivate;
     uint8_t version = 1;
 
 public:
