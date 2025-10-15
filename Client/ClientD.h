@@ -11,12 +11,7 @@
 #include <cstdint>
 #include "RSAWrapper.h"
 #include "Base64Wrapper.h"
-typedef struct  UUID16
-{
-    //array of bytes for the uuid
-    std::array<std::uint8_t, 16> bytes{};
-    bool operator==(const UUID16& other) const { return bytes == other.bytes; }
-}UUID16;
+#include "utils.h"
 
 
 class ClientD {

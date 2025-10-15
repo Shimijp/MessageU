@@ -2,9 +2,8 @@
 // Created by shimo on 08/09/2025.
 //
 #include <boost/asio.hpp>
-#include "header.h"
+#include "Request.h"
 #include "ReadPort.h"
-#include "Register.h"
 #include "RWClientD.h"
 #include "utils.h"
 #define MENU "110) register\n0) exit client\n"
@@ -20,7 +19,7 @@ bool connect_to_server(tcp::socket &s, tcp::resolver &resolver, const char *addr
         std::cerr << "Failed to resolve address: " << ec.message() << std::endl;
         return false;
     }
-    boost::asio::connect(s, endpoints, ec);
+    auto res=  boost::asio::connect(s, endpoints, ec);
     if (ec) {
         std::cerr << "Failed to connect: " << ec.message() << std::endl;
         return false;
@@ -31,8 +30,8 @@ bool connect_to_server(tcp::socket &s, tcp::resolver &resolver, const char *addr
 // Helper function to read and print server response
 bool read_and_print_response(tcp::socket &s) {
     boost::system::error_code ec;
-    std::array<char, 1024> buf;
-    size_t len = s.read_some(boost::asio::buffer(buf), ec);
+    std::array<char, MAX_PAYLOAD_SIZE> buf{};
+    const size_t len = s.read_some(boost::asio::buffer(buf), ec);
     if (!ec && len > 0) {
         std::cout << "Server response: " << std::string(buf.data(), len) << std::endl;
         return false;
@@ -64,7 +63,7 @@ int main(int argc , char ** argv) {
         return -1;
     }
 
-    std::cout << "MessageU client at your service\n"<< std::endl;
+    std::cout << "MessageU client at your service\n";
     std::string choise;
     bool should_exit = false;
     while(!should_exit) {
@@ -90,9 +89,9 @@ int main(int argc , char ** argv) {
                 std::string name = get_name();
                 ClientD client_d(name);
                 Register reg(client_d);
-                std::array<uint8_t, PAYLOAD_LENGTH> msg = reg.to_bytes();
+                std::array<uint8_t, REGISTER_LENGTH> msg = reg.toBytes();
                 boost::system::error_code ec;
-                boost::asio::write(s, boost::asio::buffer(msg, PAYLOAD_LENGTH), ec);
+                boost::asio::write(s, boost::asio::buffer(msg, REGISTER_LENGTH), ec);
                 if (ec) {
                     std::cerr << "Error sending data: " << ec.message() << std::endl;
                     break;
