@@ -3,6 +3,7 @@ import socket
 import selectors
 from read_header import parse_header, HEADER_SIZE, MAX_PAYLOAD_SIZE
 from ClientDB import create_db, search_client_in_db
+from register import *
 sel = selectors.DefaultSelector()
 
 
@@ -78,17 +79,20 @@ def handle_client(conn, client_address, db):
 
                 was_header = True
                 print(f"Received header from {client_address}: {header}")
-                client_id = header["client_id"]
-                client_name = header["client_name"]
-                public_key = search_client_in_db(db, client_id,client_name)
-                print(public_key)
+                code = header['code']
                 buffer = buffer[HEADER_SIZE:]  # Remove header from buffer
-
-
-
-
-
-
+                match code:
+                    case 600:  # Registration code
+                        name , public_key = parse_request(buffer)
+                        if not name or not public_key:
+                            conn.sendall(b'error:  invalid data')
+                            break
+                        response = register_client(db, name.strip(b'\x00'), public_key)
+                        if response == 0:
+                            conn.sendall(b'error: already registered or invalid data')
+                        else:
+                            conn.sendall(response)
+                        break
 
 
     except Exception as e:

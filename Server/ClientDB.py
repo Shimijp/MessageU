@@ -1,34 +1,60 @@
 
 
 import sqlite3 as sql
-
+import time
 
 
 def create_db():
     conn = sql.connect("defensive.db")
     conn.text_factory = bytes
     try:
-        conn.executescript("CREATE TABLE IF NOT EXISTS clients(ID  BLOB(16) PRIMARY KEY,"
-                           "UserName  TEXT NOT NULL UNIQUE,"
-                           "PublicKey BLOB(160) NOT NULL,"
-                           "LastSeen INTEGER NOT NULL ")
+        conn.executescript("""
+                CREATE TABLE IF NOT EXISTS clients (
+                ID BLOB(16) PRIMARY KEY,
+                UserName TEXT NOT NULL UNIQUE,
+                PublicKey BLOB(160) NOT NULL,
+                LastSeen INTEGER NOT NULL DEFAULT 0
+            );
+        """)
     except sql.Error as e:
         print(f"An error occurred while creating the database: {e}")
 
 
     return conn
-
+def add_client_to_db(client_id, name, public_key, conn):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+                INSERT INTO clients (ID, UserName, PublicKey, LastSeen)
+                VALUES (?, ?, ?, ?)
+        """, (client_id.bytes, name, public_key, int(time.time())))
+        conn.commit()
+        return True
+    except sql.IntegrityError as e:
+        print(f"Integrity error: {e}")
+        return False
+    except sql.Error as e:
+        print(f"An error occurred while adding the client: {e}")
+        return False
 
 def search_client_in_db(client_id, name, conn):
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT PublicKey from clients WHERE ID =? AND UserName =?", (client_id, name))
-        row = cursor.fetchone()
+        row = cursor.fetchall()
         return row[0] if row else None
-    except sql.error as e:
+    except sql.Error as e:
         print(f"could not fetch data: {e}")
         return None
 
-
+def find_client_by_name(conn, name):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT ID, PublicKey FROM clients WHERE UserName = ?", (name,))
+        row = cursor.fetchone()
+        return (row[0], row[1]) if row else (None, None)
+    except sql.Error as e:
+        print(f"An error occurred while searching for client by name: {e}")
+        return (None, None)
 
 
