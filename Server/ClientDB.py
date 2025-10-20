@@ -37,10 +37,10 @@ def add_client_to_db(client_id, name, public_key, conn):
         print(f"An error occurred while adding the client: {e}")
         return False
 
-def search_client_in_db(client_id, name, conn):
+def search_client_in_db(client_id,  conn):
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT PublicKey from clients WHERE ID =? AND UserName =?", (client_id, name))
+        cursor.execute("SELECT PublicKey from clients WHERE ID =? ", (client_id, ))
         row = cursor.fetchall()
         return row[0] if row else None
     except sql.Error as e:
@@ -50,11 +50,30 @@ def search_client_in_db(client_id, name, conn):
 def find_client_by_name(conn, name):
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT ID, PublicKey FROM clients WHERE UserName = ?", (name,))
+        cursor.execute("SELECT ID, PublicKey FROM clients WHERE UserName = ?", (name, ))
         row = cursor.fetchone()
         return (row[0], row[1]) if row else (None, None)
     except sql.Error as e:
         print(f"An error occurred while searching for client by name: {e}")
-        return (None, None)
+        return None, None
 
 
+def return_all_clients(conn , id):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT ID, UserName FROM clients WHERE ID != ?", (id,))
+        rows = cursor.fetchall()
+        return rows
+    except sql.Error as e:
+        print(f"An error occurred while fetching all clients: {e}")
+        return []
+
+def get_public_key(conn, client_id):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT PublicKey FROM clients WHERE ID = ?", (client_id,))
+        row = cursor.fetchall()
+        return row
+    except sql.Error as e:
+        print(f"An error occurred while fetching all clients: {e}")
+        return None
