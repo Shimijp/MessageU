@@ -3,6 +3,11 @@
 //
 
 #include "ClientD.h"
+ClientD::ClientD() {
+    name = "";
+    uuid = UUID16{};
+    rsaPrivate = nullptr;
+}
 ClientD::ClientD(std::string name) {
     this->name = std::move(name);
     this->uuid = UUID16{};
@@ -27,6 +32,7 @@ void ClientD::setUUID(const UUID16& newUUID) {
     this->uuid = newUUID;
 }
 void ClientD::setClientName(const std::string& newName) {
+
     this->name = newName;
 }
 void ClientD::setRSAPrivateKeyFromBase64(const std::string& base64Key) {

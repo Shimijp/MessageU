@@ -25,6 +25,7 @@ UUID16 stringToUUID16(const std::string& uuidStr) {
     }
     return uuid;
 }
+
 void loadClientFromFile(const std::string& path, ClientD& client) {
     std::ifstream file(path);
     if(!file.is_open()) {

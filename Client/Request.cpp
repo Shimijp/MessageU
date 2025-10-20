@@ -7,9 +7,10 @@
 #include <iostream>
 
 
-std::array<uint8_t, HEADER_SIZE> Header::toBytes() const {
-    std::array<uint8_t, HEADER_SIZE> data{};
+std::vector<uint8_t> Header::toBytes() const {
+    std::vector<uint8_t> data(HEADER_SIZE);
     size_t i = 0;
+
     for (const auto& byte : client_id.bytes) {
         data[i++] = byte;
     }
@@ -24,12 +25,13 @@ std::array<uint8_t, HEADER_SIZE> Header::toBytes() const {
     return data;
 }
 Register::Register(const ClientD& client)
-    : Header(client, reg, REGISTER_LENGTH), name(client.getName()) {
+    : Header(client, reg, MAX_NAME_LENGTH + KEY_LENGTH), name(client.getName()) {
     this->rsaPublic = new RSAPublicWrapper(client.getRSAPublic());
 }
-std::array<uint8_t, REGISTER_LENGTH> Register::toBytes() const {
-    std::array<uint8_t, HEADER_SIZE> header_bytes = Header::toBytes();
-    std::array<uint8_t, REGISTER_LENGTH> data{};
+std::vector<uint8_t> Register::toBytes() const {
+    std::vector<uint8_t> header_bytes = Header::toBytes();
+    std::vector<uint8_t> data(REGISTER_LENGTH);
+
     std::copy(header_bytes.begin(), header_bytes.end(), data.begin());
     for (size_t i = 0; i < MAX_NAME_LENGTH; ++i) {
         if (i < name.size()) {
@@ -47,7 +49,7 @@ std::array<uint8_t, REGISTER_LENGTH> Register::toBytes() const {
 std::string get_name() {
     std::string name;
     while (true) {
-        std::cout << "Enter your name (max 32 chars): ";
+        std::cout << "Enter your name (max 255 chars): ";
         std::getline(std::cin, name);
 
         if (isValidAsciiUsername(name)) {
@@ -64,7 +66,7 @@ bool isValidAsciiUsername(const std::string& name) {
     return true;
 }
 ClientList::ClientList(const UUID16 uuid) : Header( uuid, userList, 0) {}
-std::array<uint8_t, HEADER_SIZE> ClientList::toBytes() const {
+std::vector<uint8_t> ClientList::toBytes() const {
     return Header::toBytes();
 }
 ReqPubKey::ReqPubKey(const UUID16 uuid, const UUID16 targetUuid)
@@ -72,9 +74,10 @@ ReqPubKey::ReqPubKey(const UUID16 uuid, const UUID16 targetUuid)
 UUID16 ReqPubKey::getTargetUuid() const {
     return targetUuid;
 }
-std::array<uint8_t, HEADER_SIZE + UUID_LENGTH> ReqPubKey::toBytes() const {
-    std::array<uint8_t, HEADER_SIZE> header_bytes = Header::toBytes();
-    std::array<uint8_t, HEADER_SIZE + UUID_LENGTH> data{};
+std::vector<uint8_t> ReqPubKey::toBytes() const {
+    std::vector<uint8_t> header_bytes = Header::toBytes();
+    std::vector<uint8_t> data(HEADER_SIZE + UUID_LENGTH);
+
     std::copy(header_bytes.begin(), header_bytes.end(), data.begin());
     for (size_t i = 0; i < UUID_LENGTH; ++i) {
         data[HEADER_SIZE + i] = targetUuid.bytes[i];

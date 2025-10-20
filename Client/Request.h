@@ -6,12 +6,16 @@
 #define HEADER_H
 
 #include "ClientD.h"
+#include <vector>
+
+// Request.h - Defines request message structures for MessageU protocol
+// Includes header, registration, client list, and public key request classes
 
 struct Header {
-    UUID16 client_id;
-    uint8_t version;
-    uint16_t msg_type;
-    uint32_t payload_length;
+    UUID16 client_id; // Sender's UUID
+    uint8_t version;  // Protocol version
+    uint16_t msg_type; // Type of message/request
+    uint32_t payload_length; // Length of payload
     Header(const UUID16 uuid, const uint16_t msg_type, const uint32_t payload_length)
         : client_id(uuid), version(1),
           msg_type(msg_type), payload_length(payload_length) {}
@@ -19,33 +23,35 @@ struct Header {
         : client_id(client.getUUID()), version(1),
           msg_type(msg_type), payload_length(payload_length) {}
 
-    std::array<uint8_t, HEADER_SIZE> toBytes() const;
+    virtual ~Header() = default; // Virtual destructor for proper inheritance
+    virtual std::vector<uint8_t> toBytes() const; // Virtual serialize function returning vector
 
 };
-class Register:Header {
+// Registration request: contains client info and public key
+class Register: public Header {
 private:
-    std::string name;
-    RSAPublicWrapper * rsaPublic;
+    std::string name; // Client name
+    RSAPublicWrapper * rsaPublic; // RSA public key wrapper
 public:
-    explicit Register(const ClientD& client);
-    std::array<uint8_t, REGISTER_LENGTH> toBytes() const;
+    explicit Register(const ClientD& client); // Construct from client
+    std::vector<uint8_t> toBytes() const override; // Serialize to bytes - returns REGISTER_LENGTH size vector
+};
+// Request for client list
+class ClientList final :public Header {
+public:
+    explicit ClientList(UUID16 uuid); // Construct with UUID
+    std::vector<uint8_t> toBytes() const override; // Serialize to bytes - returns HEADER_SIZE size vector
+};
+// Request for another client's public key
+class ReqPubKey final : public Header {
+    UUID16 targetUuid; // Target client UUID
+public:
+    ReqPubKey( UUID16 uuid, UUID16 targetUuid); // Construct with source and target UUIDs
+    UUID16 getTargetUuid() const; // Get target UUID
+    std::vector<uint8_t> toBytes() const override; // Serialize to bytes - returns HEADER_SIZE + UUID_LENGTH size vector
+};
 
-};
-class ClientList:Header
-{
-public:
-    explicit ClientList(UUID16 uuid);
-    std::array<uint8_t , HEADER_SIZE> toBytes() const;
-};
-class ReqPubKey:Header {
-    UUID16 targetUuid;
-public:
-    ReqPubKey(const UUID16 uuid, UUID16 targetUuid);
-    UUID16 getTargetUuid() const;
-    std::array<uint8_t, HEADER_SIZE + UUID_LENGTH> toBytes() const;
-};
-
-std::string get_name();
-bool isValidAsciiUsername(const std::string& name);
+std::string get_name(); // Prompt and validate client name
+bool isValidAsciiUsername(const std::string& name); // Validate ASCII username
 
 #endif //HEADER_H

@@ -14,32 +14,28 @@
 #include "utils.h"
 
 
+// ClientD.h - Represents a client entity with cryptographic identity
+// Handles client name, UUID, RSA keys, and versioning
 class ClientD {
-    std::string name;
-    UUID16 uuid;
-    RSAPrivateWrapper *rsaPrivate;
-    uint8_t version = 1;
+    std::string name; // Client's name
+    UUID16 uuid;      // Unique identifier
+    RSAPrivateWrapper *rsaPrivate; // RSA private key wrapper
+    uint8_t version = 1; // Protocol version
 
 public:
-    explicit ClientD(std::string name);
+    explicit ClientD(std::string name);// Construct client with name
+    ClientD(); // Default constructor
     ~ClientD() = default;
-    std::string getName() const;
-    UUID16 getUUID() const;
-    std::string  getRSAPublic() const;
-    std::string getPrivateKeyBase64() const;
-    uint8_t getVersion() const;
+    std::string getName() const; // Get client name
+    UUID16 getUUID() const; // Get client UUID
+    std::string  getRSAPublic() const; // Get RSA public key (Base64)
+    std::string getPrivateKeyBase64() const; // Get private key (Base64)
+    uint8_t getVersion() const; // Get protocol version
 
-
-
+    // Setters for client properties
     void setClientName(const std::string& newName);
     void setUUID(const UUID16& newUUID);
     void setRSAPrivateKeyFromBase64(const std::string& base64Key);
-
-
-
-
-
-
 };
 
 
