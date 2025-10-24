@@ -44,6 +44,8 @@ struct Client {
     std::string name;
     Client(const UUID16 uuid, std::string  name) : uuid16(uuid) , name(std::move(name)){}
     explicit Client(std::array<char, UUID_LENGTH+ MAX_NAME_LENGTH> & data);
+
+
 };
 
 // Request and response codes for messaging protocol
@@ -56,11 +58,11 @@ enum RequestCode {
 
 };
 enum ResponseCode {
-    regSucc = 2101,
-    userListSucc = 2102,
-    getPubKeySucc = 2103,
-    sendMsgSucc = 2104,
-    getMsgSucc = 2105,
+    regSucc = 2100,
+    userListSucc = 2101,
+    getPubKeySucc = 2102,
+    sendMsgSucc = 2103,
+    getMsgSucc = 2104,
     err = 9000,
 };
 

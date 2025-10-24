@@ -5,14 +5,14 @@
 #ifndef RWCLIENTD_H
 #define RWCLIENTD_H
 #include <fstream>
-#include "clientD.h"
+#include "ClientD.h"
 
 
 bool checkFileExists(const std::string& path);
 bool checkLegalUUID(const std::string &uuid);
 UUID16 stringToUUID16(const std::string& uuidStr);
 
-void loadClientFromFile(const std::string& path, ClientD& client);
+void loadClientFromFile(const std::string& path, ClientD *  client_d);
 void saveClientToFile(const std::string& path, const ClientD& client);
 
 #endif //RWCLIENTD_H

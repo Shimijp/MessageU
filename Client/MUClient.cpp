@@ -5,13 +5,14 @@
 #include "ReqHandler.h"
 #include "Response.h"
 #include "ReadPort.h"
+#include "RespHandler.h"
 #include "RWClientD.h"
 #include "utils.h"
 
 using boost::asio::ip::tcp;
 
 
-int main(int argc , char ** argv) {
+int main() {
     std::ifstream f(SERVER_INFO_PATH);
     const std::vector<std::string> data = get_data_from_file(f);
     if(data.empty()) {
@@ -33,6 +34,20 @@ int main(int argc , char ** argv) {
     std::cout << "MessageU client at your service\n";
     std::string choice;
     bool should_exit = false;
+    ClientD * client_d = nullptr;
+    if(checkFileExists(CLIENT_INFO_PATH)) {
+        try {
+            client_d = new ClientD();
+            loadClientFromFile(CLIENT_INFO_PATH, client_d);
+            std::cout << "Loaded client data from file. Name: " << client_d->getName() << std::endl;
+        } catch (std::runtime_error & e) {
+            std::cerr << "Error loading client data: " << e.what() << "\n";
+            delete client_d;
+            client_d = nullptr;
+            if (s.is_open()) s.close();
+            return -1;
+        }
+    }
     while(!should_exit) {
         if (!s.is_open()) {
             std::cerr << "Disconnected from server. Exiting..." << std::endl;
@@ -47,16 +62,31 @@ int main(int argc , char ** argv) {
             std::cout << "Invalid input. Try again.\n";
             continue;
         }
-        sendRequest(s, static_cast<inputCode>(num_choice), &should_exit);
-
-
-        //std::array<char ,  HEADER_RESPONSE_SIZE> header_data{};
-        std::string buff;
-        s.read_some(boost::asio::buffer(buff));
-        std::cout << buff << std::endl;
-        for(auto & c : buff) {
-            std::cout << std::hex << (static_cast<int>(c) & 0xff) << " ";
+        bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d);
+        std::cout << "Request sent for choice: " << num_choice << std::endl;
+        if(legalReq) {
+            Response::Response * resp = readAndHandle(s);
+            if(resp == nullptr) {
+                continue;
+            }
+            ResponseCode code = resp->getResponseCode();
+            if(code == regSucc) {
+                try {
+                    client_d->setUUID(dynamic_cast<Response::Register *>(resp)->getUUID());
+                    saveClientToFile(CLIENT_INFO_PATH, *client_d);
+                    std::cout << "Client data saved to file.\n";
+                } catch (std::runtime_error & e) {
+                    std::cerr << "Error saving client data: " << e.what() << "\n";
+                }
+            }
+            delete resp;
         }
+
+
+
+
+
+
 
     }
     if (s.is_open()) s.close();

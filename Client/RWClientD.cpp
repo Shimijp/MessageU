@@ -5,6 +5,7 @@
 #include "RWClientD.h"
 
 #include <iomanip>
+#include <iostream>
 
 bool checkFileExists(const std::string &path) {
     std::fstream file(path);
@@ -26,35 +27,45 @@ UUID16 stringToUUID16(const std::string& uuidStr) {
     return uuid;
 }
 
-void loadClientFromFile(const std::string& path, ClientD& client) {
-    std::ifstream file(path);
-    if(!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + path);
+void loadClientFromFile(const std::string& path, ClientD * client_d) {
+    if(client_d == nullptr) {
 
-    }
-    std::string line1, line2,line3;
-    std::getline(file, line1);
-    std::getline(file, line2);
-    std::getline(file, line3);
-    if(line1.empty() || line2.empty() || line3.empty()) {
+            std::cout << "client_d is null pointer\n";
+            return;
+        }
+        std::ifstream file(path);
+        if(!file.is_open()) {
+            throw std::runtime_error("Could not open file: " + path);
+
+        }
+    std::string name, uuid,base64_key;
+    std::getline(file, name);
+    std::getline(file, uuid);
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    base64_key = oss.str();
+    if(name.empty() || uuid.empty() || base64_key.empty()) {
         throw std::runtime_error("File format incorrect or missing data in file: " + path);
     }
-    client.setClientName(line1);
-    if(!checkLegalUUID(line2)) {
+    client_d->setClientName(name);
+    if(!checkLegalUUID(uuid)) {
         throw std::runtime_error("UUID format incorrect in file: " + path);
     }
-    client.setUUID(stringToUUID16(line2));
-    client.setRSAPrivateKeyFromBase64(line3);
+    client_d->setUUID(stringToUUID16(uuid));
+    client_d->setRSAPrivateKeyFromBase64(base64_key);
 }
 void saveClientToFile(const std::string& path, const ClientD& client) {
     std::ofstream file(path);
     if(!file.is_open()) {
         throw std::runtime_error("Could not open file for writing: " + path);
+
+    }
+    if(&client == nullptr) {
+        throw std::runtime_error("Client pointer is null");
     }
     file << client.getName() << "\n";
     for (const auto& byte : client.getUUID().bytes) {
         file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
     }
-    file << "\n";
     file << "\n" << client.getPrivateKeyBase64() << "\n";
 }

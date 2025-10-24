@@ -28,7 +28,7 @@ struct Header {
 
 };
 // Registration request: contains client info and public key
-class Register: public Header {
+class Register final : public Header {
 private:
     std::string name; // Client name
     RSAPublicWrapper * rsaPublic; // RSA public key wrapper

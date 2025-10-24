@@ -22,40 +22,37 @@ bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *addres
     std::cout << "connected to: "  << res << std::endl;
     return true;
 }
-bool sendRequest(tcp::socket& s, const inputCode code, bool* shouldExit) {
+bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, ClientD*& targetClient) {
     Header * header;
     bool flag = false;
-
     switch (code) {
         case regC: {
-            if (checkFileExists(CLIENT_INFO_PATH)) {
+            if (checkFileExists(CLIENT_INFO_PATH) || targetClient != nullptr) {
                 std::cerr << "client already registered!\n";
                 return false;
+
             }
             const std::string name = get_name();
-            const ClientD client_d(name);
-            header = new Register(client_d);
+            std::cout << "Registering client with name: " << name << std::endl;
+            targetClient = new ClientD(name);
+            header = new Register(*targetClient);
             flag = true;
             break;
         }
 
         case reqLstC: {
-            ClientD client_d;
-            try { loadClientFromFile(CLIENT_INFO_PATH, client_d); }
-            catch (const std::exception& e) {
-                std::cerr << "Error loading client data: " << e.what() << '\n';
+            if(targetClient == nullptr) {
+                std::cerr << "Client not registered. Please register first.\n";
                 return false;
             }
-            header = new ClientList(client_d.getUUID());
+            header = new ClientList(targetClient->getUUID());
             flag = true;
             break;
         }
 
-        case getPubKey: {
-            ClientD client_tt;
-            try { loadClientFromFile(CLIENT_INFO_PATH, client_tt); }
-            catch (const std::exception& e) {
-                std::cerr << "Error loading client data: " << e.what() << '\n';
+        case reqPubC:{
+            if(targetClient == nullptr) {
+                std::cerr << "Client not registered. Please register first.\n";
                 return false;
             }
             std::string targetUuidStr;
@@ -65,14 +62,15 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool* shouldExit) {
                 std::cerr << "Invalid UUID format.\n";
                 return false;
             }
-            header = new ReqPubKey(client_tt.getUUID(),
+            header = new ReqPubKey(targetClient->getUUID(),
                                                  stringToUUID16(targetUuidStr));
             flag = true;
             break;
         }
         case exitC:
-            std::cout << "Exiting....\nGoodbye";
-            return true;
+            std::cout << "Exiting....\nGoodbye\n";
+            *shouldExit = true;
+            return false;
 
         default:
             std::cerr << "Invalid command.\n";
@@ -91,7 +89,9 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool* shouldExit) {
         flag = false;
         if (shouldExit) *shouldExit = true;
     }
+    else {
+        std::cout << "Request sent successfully.\n";
+    }
 
     return flag;
 }
-
