@@ -10,7 +10,8 @@ HEADER_SIZE = struct.calcsize(HEADER_FMT)
 REGISTER_FMT = "<255s160s"
 CLIENT_ID_FMT = "<16s"
 CLIENT_LST_FMT = "<16s255s"
-PUB_KEY_FMT = "<160"
+PUB_KEY_FMT = "<160s"
+PUB_KEY_RSP_FMT = "<16s160s"
 MAX_PAYLOAD_SIZE =  2 ** 32 #4GB
 class ReqCodes(Enum):
     REG  = 600
@@ -60,7 +61,6 @@ def register_client(conn, data):
         return 0
     else:
         client_id = bytes(uuid.uuid4().bytes)
-        print(type(client_id))
         was_added = add_client_to_db(client_id, name, key, conn)
         if was_added:
             try:
@@ -85,16 +85,20 @@ def req_usr_lst(data: bytes, conn, client_id):
 
 def request_public_key(conn, data, client_id):
     client_name = search_client_in_db(client_id, conn)
+    print(f"client id: {client_id}")
+    print(f"client name: {client_name}")
     if not client_name:
         print(f"not a registered client! {client_id}",  file= sys.stderr)
         return None
     try:
-        req_id = struct.unpack(CLIENT_ID_FMT, data)
-        req_id = get_public_key(conn, req_id)
-        if not req_id:
+        req_id, = struct.unpack(CLIENT_ID_FMT, data)
+
+        print(f"request key for: {req_id}")
+        res_id, key = get_public_key(conn, req_id)
+        if not res_id:
             print(f"no client with id {req_id} was found!", file=sys.stderr)
             return None
-        return req_id
+        return res_id, key
     except struct.error as e:
         print(f"unable to get key,  {e}",  file = sys.stderr)
         return None

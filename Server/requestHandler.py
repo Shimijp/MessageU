@@ -1,7 +1,5 @@
 import sys
-from http.client import responses
 
-from Requests import *
 from Response import *
 
 
@@ -17,9 +15,13 @@ def handle_request(conn, data, req_code, client_id):
             if clients:
                 response = UserList(clients)
         case ReqCodes.REQ_PUB_KEY.value:
-            req_key = request_public_key(conn, data, client_id)
-            if req_key:
-                response = PubKey(req_key)
+            req_id, key= request_public_key(conn, data, client_id)
+            print(f"requested key: {key}")
+            if key:
+                try:
+                    response = PubKey(req_id, key)
+                except Exception as e:
+                    print(f"Error creating PubKey response: {e}", file=sys.stderr)
         case _:
             print(f"no such code {req_code}!", file= sys.stderr)
     return response.to_bytes()

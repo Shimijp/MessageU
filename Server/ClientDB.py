@@ -16,6 +16,12 @@ def create_db():
                 LastSeen INTEGER NOT NULL DEFAULT 0
             );
         """)
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS messages (ID BLOB(4) PRIMRY KEY
+        TO_CLIENT BLOB(16) NOT NULL,
+        FROM_CLIENT BLOB(16) NOT NULL,
+        TYPE INTEGER NOT NULL,
+        CONTENT BLOB );""")
     except sql.Error as e:
         print(f"An error occurred while creating the database: {e}")
 
@@ -27,7 +33,7 @@ def add_client_to_db(client_id, name, public_key, conn):
         cursor.execute("""
                 INSERT INTO clients (ID, UserName, PublicKey, LastSeen)
                 VALUES (?, ?, ?, ?)
-        """, (client_id.bytes, name, public_key, int(time.time())))
+        """, (client_id, name, public_key, int(time.time())))
         conn.commit()
         return True
     except sql.IntegrityError as e:
@@ -37,10 +43,10 @@ def add_client_to_db(client_id, name, public_key, conn):
         print(f"An error occurred while adding the client: {e}")
         return False
 
-def search_client_in_db(client_id,  conn):
+def search_client_in_db(client_id: object, conn: object) -> object:
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT PublicKey from clients WHERE ID =? ", (client_id, ))
+        cursor.execute("SELECT PublicKey  from clients WHERE ID =? ", (client_id, ))
         row = cursor.fetchall()
         return row[0] if row else None
     except sql.Error as e:
@@ -71,9 +77,9 @@ def return_all_clients(conn , id):
 def get_public_key(conn, client_id):
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT PublicKey FROM clients WHERE ID = ?", (client_id,))
+        cursor.execute("SELECT ID, PublicKey FROM clients WHERE ID = ?", (client_id,))
         row = cursor.fetchall()
-        return row
+        return row[0] if row else None
     except sql.Error as e:
-        print(f"An error occurred while fetching all clients: {e}")
+        print(f"An error occurred while fetching  client: {e}")
         return None

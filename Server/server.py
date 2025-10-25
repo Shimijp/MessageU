@@ -1,151 +1,172 @@
-import sys
-import warnings
-import socket
 import selectors
+import socket
+
 from Requests import decode_header, HEADER_SIZE, MAX_PAYLOAD_SIZE
-from ClientDB import create_db
-from Requests import *
 from Response import GeneralError
 from requestHandler import handle_request
+from ClientDB import create_db
+from server import get_server_port
+
+# Create a selector to handle multiple sockets concurrently
 sel = selectors.DefaultSelector()
 
-
-def get_server_info():
+def start_server(host="0.0.0.0", port=1234):
     """
-    Reads the port number from 'myport.info'.
-    Falls back to a default port if the file is not found or contains invalid data.
-
-    Returns:
-        int: The port number for the server.
+    Create and start the server socket, register it with the selector.
+    (Pass the port you want when calling this; same signature as your template)
     """
-    try:
-        with open('myport.info', 'r') as f:
-            port = int(f.read())
-            print(f"found port : {port}")
-    except FileNotFoundError:
-        warnings.warn("no port file was found, switching to default port")
-        port = 1357
-    except ValueError:
-        warnings.warn("invalid file content, switching to default port")
-        port = 1357
-    return port
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((host, port))
+    server_sock.listen()
+    server_sock.setblocking(False)
+    sel.register(server_sock, selectors.EVENT_READ, data=None)
+    print(f"Listening on {host}:{port}")
 
-
-
-def get_server_port():
-    """Read port from myport.info or fall back to 1357."""
-    try:
-        with open("myport.info", "r") as f:
-            port = int(f.read().strip())
-            print(f"[init] Using port from file: {port}")
-            return port
-    except FileNotFoundError:
-        warnings.warn("[init] myport.info not found, using default 1357")
-    except ValueError:
-        warnings.warn("[init] invalid myport.info, using default 1357")
-    return 1357
-
-
-
-def handle_client(conn: socket.socket,db, addr):
+def accept_wrapper(sock: socket.socket, db):
     """
-    Read from a single client until it closes the connection.
-    Frames: [HEADER][PAYLOAD] ... repeated.
+    Accept a new client connection and register it with the selector.
+    data holds per-connection state: addr, in_buf, out_buf, db.
     """
-    print(f"[conn] Connected: {addr}")
-    buffer = bytearray()
+    client_sock, addr = sock.accept()
+    print(f"Accepted connection from {addr}")
+    client_sock.setblocking(False)
+    state = {
+        "addr": addr,
+        "in_buf": bytearray(),
+        "out_buf": bytearray(),
+        "db": db,
+    }
+    sel.register(client_sock, selectors.EVENT_READ, data=state)
 
-    try:
+def _queue_write(sock: socket.socket, state: dict, data: bytes):
+    if not data:
+        return
+    state["out_buf"] += data
+    # ensure we're registered for WRITE if there's something to send
+    sel.modify(sock, selectors.EVENT_READ | selectors.EVENT_WRITE, data=state)
+
+def service_connection(key: selectors.SelectorKey, mask: int):
+    """
+    Handle communication with a client socket according to your framed protocol:
+    [HEADER][PAYLOAD]...
+    """
+    sock: socket.socket = key.fileobj
+    state: dict = key.data
+    addr = state["addr"]
+    in_buf = state["in_buf"]
+    out_buf = state["out_buf"]
+    db = state["db"]
+
+    # READ
+    if mask & selectors.EVENT_READ:
+        try:
+            chunk = sock.recv(4096)
+        except ConnectionResetError:
+            print(f"Client reset connection: {addr}")
+            sel.unregister(sock)
+            sock.close()
+            return
+        if not chunk:
+            # client closed
+            sel.unregister(sock)
+            sock.close()
+            print(f"Client closed connection: {addr}")
+            return
+
+        in_buf += chunk
+
+        # Parse as many complete frames as possible
         while True:
-            chunk = conn.recv(4096)
-            if not chunk:
-                # EOF: client closed its write side
-                print(f"[conn] Disconnected: {addr}")
+            if len(in_buf) < HEADER_SIZE:
                 break
 
-            buffer.extend(chunk)
+            header = decode_header(in_buf[:HEADER_SIZE])
+            if not header:
+                # invalid header → send error and close
+                try:
+                    _queue_write(sock, state, GeneralError().to_bytes())
+                except Exception:
+                    pass
+                in_buf.clear()
+                # we will close after flushing any pending writes below
+                break
 
-            # Try to parse as many complete messages as exist in buffer
-            while True:
-                # Need at least a full header
-                if len(buffer) < HEADER_SIZE:
-                    break
+            payload_len = header["payload_size"]
+            if payload_len > MAX_PAYLOAD_SIZE:
+                try:
+                    _queue_write(sock, state, GeneralError().to_bytes())
+                except Exception:
+                    pass
+                in_buf.clear()
+                break
 
-                header = decode_header(buffer[:HEADER_SIZE])
-                if not header:
-                    print("[warn] Invalid header, sending error response")
-                    conn.sendall(GeneralError().to_bytes())
-                    buffer.clear()
-                    continue
+            total = HEADER_SIZE + payload_len
+            if len(in_buf) < total:
+                break
 
-                payload_len = header["payload_size"]
+            payload = bytes(in_buf[HEADER_SIZE:total])
+            code = header["code"]
+            client_id = header["client_id"]
 
-                # Safety guard
-                if payload_len > MAX_PAYLOAD_SIZE:
-                    print(f"[error] payload_size={payload_len} exceeds MAX; closing")
-                    conn.sendall(GeneralError().to_bytes())
-                    buffer.clear()
-                    continue
 
-                total = HEADER_SIZE + payload_len
-                if len(buffer) < total:
-                    # Not yet a full frame; wait for more data
-                    break
+            # consume exactly this frame
+            del in_buf[:total]
 
-                # Slice out a single complete frame
-                payload = bytes(buffer[HEADER_SIZE:total])
-                code = header["code"]
-                client_id = header["client_id"]
-                # Consume this frame from the buffer
-                del buffer[:total]
+            try:
+                resp = handle_request(db, payload, code, client_id)
+            except Exception as e:
+                print(f"handle_request error from {addr}: {e}")
+                resp = GeneralError().to_bytes()
 
-                # Process the message
-                response = handle_request(db, payload, code, client_id)
-                conn.sendall(response)
-                buffer.clear()
+            _queue_write(sock, state, resp)
 
-    except ConnectionResetError:
-        print(f"[conn] Reset by peer: {addr}")
-    except Exception as e:
-        print(f"[conn] Error {addr}: {e}")
+    # WRITE (non-blocking; partial sends)
+    if mask & selectors.EVENT_WRITE:
+        if out_buf:
+            try:
+                sent = sock.send(out_buf)
+            except (BlockingIOError, InterruptedError):
+                return
+            except BrokenPipeError:
+                sel.unregister(sock)
+                sock.close()
+                return
+            if sent > 0:
+                del out_buf[:sent]
+        # If nothing left to write, go back to READ only
+        if not out_buf:
+            sel.modify(sock, selectors.EVENT_READ, data=state)
+
+def run():
+    try:
+
+        port = get_server_port()
+    except Exception:
+        port = 1357
+
+    db = create_db()
+    start_server("0.0.0.0", port)
+    try:
+        while True:
+            events = sel.select(timeout=None)
+            for key, mask in events:
+                if key.data is None:
+                    # Accept new client(s)
+                    accept_wrapper(key.fileobj, db)
+                else:
+                    service_connection(key, mask)
+    except KeyboardInterrupt:
+        print("Interrupted by user, closing...")
     finally:
         try:
-            conn.shutdown(socket.SHUT_RDWR)
+            sel.close()
         except Exception:
             pass
-        conn.close()
-
-
-def run_server(db, host="127.0.0.1", port=None, backlog=128):
-    if port is None:
-        port = get_server_port()
-
-    # Create a single listening socket (do this once)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_sock:
-        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_sock.bind((host, port))
-        server_sock.listen(backlog)
-        print(f"[init] Listening on {host}:{port}")
-
-        # Accept loop: handle one client at a time (synchronously)
-        while True:
-            try:
-                client_sock, client_addr = server_sock.accept()
-            except KeyboardInterrupt:
-                print("\n[init] Shutting down server")
-                break
-            except Exception as e:
-                print(f"[init] accept() error: {e}")
-                continue
-
-            # Handle this client to completion (blocking),
-            # then return to accept() for the next client.
-            handle_client(client_sock, db,client_addr)
-
+        try:
+            db.close()
+        except Exception:
+            pass
 
 if __name__ == "__main__":
-    db  = create_db()
-    run_server(db)
-    db.close()
-
-
+    run()
