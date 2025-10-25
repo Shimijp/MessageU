@@ -51,6 +51,24 @@ public:
     std::vector<uint8_t> toBytes() const override; // Serialize to bytes - returns HEADER_SIZE + UUID_LENGTH size vector
 };
 
+class Message : public Header {
+    UUID16 d_uuid;
+    uint8_t type;
+    uint32_t size;
+public:
+    Message(UUID16 uuid, UUID16 d_uuid, uint8_t type, uint32_t size);
+    UUID16 getUUID() const;
+    uint8_t getType() const;
+    uint32_t getSize() const;
+    void setUUID(UUID16 uuid) ;
+    std::vector<uint8_t> toBytes() const override;
+};
+
+class ReqMsg final : public Header {
+public:
+    explicit ReqMsg(UUID16 uuid);
+    std::vector<uint8_t> toBytes() const override;
+};
 std::string get_name(); // Prompt and validate client name
 bool isValidAsciiUsername(const std::string& name); // Validate ASCII username
 

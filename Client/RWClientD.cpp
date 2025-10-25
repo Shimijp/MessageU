@@ -60,9 +60,7 @@ void saveClientToFile(const std::string& path, const ClientD& client) {
         throw std::runtime_error("Could not open file for writing: " + path);
 
     }
-    if(&client == nullptr) {
-        throw std::runtime_error("Client pointer is null");
-    }
+
     file << client.getName() << "\n";
     for (const auto& byte : client.getUUID().bytes) {
         file << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);

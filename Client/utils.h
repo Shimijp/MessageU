@@ -13,13 +13,14 @@
 #define MAX_PAYLOAD_SIZE (std::numeric_limits<std::uint32_t>::max()) // Maximum payload size (4GB)
 #define HEADER_RESPONSE_SIZE 7 // Size of response header in bytes
 #define HEADER_SIZE 23 // Size of request header in bytes
+#define MSG_HEADER_SIZE 21
 #define KEY_LENGTH  160 // Length of RSA public key in bytes
 #define UUID_LENGTH 16 // Length of UUID in bytes
 #define MAX_NAME_LENGTH 255 // Maximum length for client name
 #define REG_SUCC_SIZE (UUID_LENGTH) // Size of successful registration response
 #define MAX_CLIENT_LST_SIZE (MAX_PAYLOAD_SIZE/ (MAX_NAME_LENGTH + UUID_LENGTH)) // Maximum number of clients in list
 #define REGISTER_LENGTH  (MAX_NAME_LENGTH + KEY_LENGTH + HEADER_SIZE) // Length of registration request
-#define MENU "110) Register\n120)Request for client list\n130_Request for public Key\n0) exit client\n"
+#define MENU "110) Register\n120)Request for client list\n130) Request for public Key\n0) exit client\n"
 #define SERVER_INFO_PATH "C:/dev/MessageU/Client/server.info"
 #define CLIENT_INFO_PATH "C:/dev/MessageU/Client/client.info"
 
@@ -55,6 +56,12 @@ enum RequestCode {
     getPubKey = 602,
     sendMsg = 603,
     getMsg = 604
+
+};
+enum MsgTypes {
+    reqSymKey = 1,
+    sendSymKey = 2,
+    sendTextMsg = 3,
 
 };
 enum ResponseCode {

@@ -84,3 +84,42 @@ std::vector<uint8_t> ReqPubKey::toBytes() const {
     }
     return data;
 }
+Message::Message(const UUID16 uuid, const UUID16 d_uuid, const uint8_t type, const uint32_t size) :
+Header(uuid, static_cast<uint8_t>(getMsg), MSG_HEADER_SIZE+size), d_uuid(d_uuid) , type(type),size(size){}
+uint32_t Message::getSize() const {
+    return size;
+}
+uint8_t Message::getType() const {
+    return type;
+}
+UUID16 Message::getUUID() const {
+    return d_uuid;
+}
+void Message::setUUID(const UUID16 uuid)  {
+    this->d_uuid = uuid;
+}
+std::vector<uint8_t> Message::toBytes() const {
+    std::vector<uint8_t> headerBytes = Header::toBytes();
+    std::vector<uint8_t> data(MSG_HEADER_SIZE);
+    std::copy(headerBytes.begin(),headerBytes.end(), data.begin());
+    size_t i = HEADER_SIZE;
+    data[i++] = type & 0xFF;
+    data[i++] = (type >> 8) & 0xFF;
+    for (const auto& byte : d_uuid.bytes) {
+        data[i++] = byte;
+    }
+    data[i++] = size & 0xFF;
+    data[i++] = (size >> 8) & 0xFF;
+    data[i++] = (size >> 16) & 0xFF;
+    data[i++] = (size >> 24) & 0xFF;
+    return data;
+
+}
+
+ReqMsg::ReqMsg(const UUID16 uuid) :Header(uuid, static_cast<uint8_t>(reqMsgs), 0){};
+std::vector<uint8_t> ReqMsg::toBytes() const {
+    return Header::toBytes();
+}
+
+
+

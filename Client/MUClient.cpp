@@ -63,7 +63,6 @@ int main() {
             continue;
         }
         bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d);
-        std::cout << "Request sent for choice: " << num_choice << std::endl;
         if(legalReq) {
             Response::Response * resp = readAndHandle(s);
             if(resp == nullptr) {

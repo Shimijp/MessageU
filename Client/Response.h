@@ -60,6 +60,7 @@ namespace Response {
         const std::vector<Client>& getList() const { return lst; }
         bool checkSuccess() const override;
         ResponseCode getResponseCode() const override;
+        void printClientList() const;
     };
 
     class PubKey final : public Response {

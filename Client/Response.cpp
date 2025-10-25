@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cstring> // for memchr
+#include <iomanip>
 #include <ios>
 #include <iostream>
 
@@ -118,6 +119,16 @@ namespace Response {
     ResponseCode ClientLst::getResponseCode() const {
         return userListSucc;
     }
+    void ClientLst::printClientList() const{
+        for(auto &client: lst) {
+            std::cout << "Client Name: " << client.name << ", UUID: ";
+            for (const auto &byte : client.uuid16.bytes) {
+                std::cout << std::hex << std::setw(2) << std::setfill('0')
+                          << static_cast<int>(byte);
+            }
+            std::cout << std::dec << std::endl; // Reset to decimal
+        }
+    }
     // ---- PubKey ----
     PubKey::PubKey(const std::vector<char>& data)
         : rsaPub(nullptr)
@@ -127,16 +138,17 @@ namespace Response {
             throw std::runtime_error("short public key payload");
         }
 
-        // First 160 bytes = raw public key blob (exactly KEY_LENGTH)
-        std::string decoded;
-        decoded.assign(data.begin(), data.begin() + KEY_LENGTH);
 
+
+        // First 16 bytes = UUID
+        for (size_t i = 0; i < UUID_LENGTH; ++i) {
+            uuid.bytes[i] = static_cast<uint8_t>(data[i]);
+        }
+        // Next 160 bytes = raw public key blob (exactly KEY_LENGTH)
+        std::string decoded;
+        decoded.assign(data.begin()+UUID_LENGTH, data.begin() + KEY_LENGTH + UUID_LENGTH);
         rsaPub = new RSAPublicWrapper(decoded);
 
-        // Next 16 bytes = UUID (offset KEY_LENGTH)
-        for (size_t i = 0; i < UUID_LENGTH; ++i) {
-            uuid.bytes[i] = static_cast<uint8_t>(data[KEY_LENGTH + i]);
-        }
     }
     ResponseCode PubKey::getResponseCode() const {
         return getPubKeySucc;

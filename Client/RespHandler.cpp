@@ -30,7 +30,7 @@ Response::Response* readAndHandle(tcp::socket& s) {
     const auto code = static_cast<ResponseCode>(header.getCode());
     const uint32_t size = header.getSize();
 
-    auto payload = readExact(s, header.getSize());
+    auto payload = readExact(s, size);
 
 
     return handleResponse(code, payload);
@@ -52,6 +52,7 @@ Response::Response *  handleResponse(const ResponseCode code, std::vector<char> 
             try {
                resp = new Response::ClientLst(data);
                 std::cout << "Number of clients: " << dynamic_cast<Response::ClientLst *>(resp)->getNumClients() << std::endl;
+                dynamic_cast<Response::ClientLst*>(resp)->printClientList();
                 break;
             }catch (std::runtime_error & e) {
                 std::cerr << "Error parsing client list: " << e.what() << "\n";
