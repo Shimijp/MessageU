@@ -24,7 +24,7 @@ std::vector<char> readExact(tcp::socket& s, std::size_t n) {
 
     return buf;
 }
-Response::Response* readAndHandle(tcp::socket& s) {
+Response::Response* readAndHandle(tcp::socket& s, std::vector<Client> & clients) {
     const auto headerBuf = readExact(s, HEADER_RESPONSE_SIZE);
     const Response::Header header(headerBuf);
     const auto code = static_cast<ResponseCode>(header.getCode());
@@ -33,9 +33,9 @@ Response::Response* readAndHandle(tcp::socket& s) {
     auto payload = readExact(s, size);
 
 
-    return handleResponse(code, payload);
+    return handleResponse(code, payload, clients);
 }
-Response::Response *  handleResponse(const ResponseCode code, std::vector<char> &data) {
+Response::Response *  handleResponse(const ResponseCode code, std::vector<char> &data, std::vector<Client> & clients) {
     Response::Response * resp = nullptr;
     std::cout << "Handling response code: " << static_cast<uint16_t>(code) <<  " size: " << data.size() << std::endl;
     if(!checkSize(code, data)) {
@@ -67,6 +67,25 @@ Response::Response *  handleResponse(const ResponseCode code, std::vector<char> 
 
             break;
         }
+        case sendMsgSucc:
+            {
+            resp = new Response::MsgSent(data);
+            std::cout << "Message sent successfully. Message ID: " << dynamic_cast<Response::MsgSent *>(resp)->getMsgID() << std::endl;
+            break;
+        }
+        case getMsgSucc:
+            {
+            try {
+                resp = new Response::ReadMsg(data);
+                dynamic_cast<Response::ReadMsg *>(resp)->printMsgs(clients);
+            }
+            catch (...) {
+                std::cerr << "Error parsing received message.\n";
+            }
+
+
+            break;
+        }
         case err: {
             std::cerr << "Error response received from server.\n";
             resp = new Response::GenError(data);
@@ -90,6 +109,10 @@ bool checkSize(const ResponseCode code, const std::vector<char> & data) {
         case getPubKeySucc:
             return data.size() == KEY_LENGTH + UUID_LENGTH;
             break;
+        case sendMsgSucc:
+            return data.size() ==MSG_ID_SIZE +UUID_LENGTH;
+        case getMsgSucc:
+            return data.size() <= MAX_PAYLOAD_SIZE;
         case err:
             return data.empty();
             break;

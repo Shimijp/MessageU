@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include "Messages.h"
 #include "RSAWrapper.h"
 #include "utils.h"
 
@@ -60,6 +60,7 @@ namespace Response {
         const std::vector<Client>& getList() const { return lst; }
         bool checkSuccess() const override;
         ResponseCode getResponseCode() const override;
+        std::vector<Client> getClients() const { return lst; }
         void printClientList() const;
     };
 
@@ -83,6 +84,48 @@ namespace Response {
             return err;
         }
     };
+    class MsgSent final : public Response {
+        UUID16 d_uuid;
+        uint32_t msgID;
+    public:
+        explicit MsgSent(const std::vector<char>& data);
+        uint32_t getMsgID() const { return msgID; }
+        ResponseCode getResponseCode() const override;
+    };
+    class MsgCont {
+        UUID16 s_uuid;
+        uint32_t msgID;
+        uint8_t msgType;
+        std::string content;
+
+    public:
+        MsgCont(const UUID16& s_uuid, const uint32_t msgID, const uint8_t msgType, std::string  content)
+            : s_uuid(s_uuid), msgID(msgID), msgType(msgType), content(std::move(content)) {}
+        UUID16 getUUID() const {
+            return s_uuid;
+        }
+        uint32_t getMsgID() const {
+            return msgID;
+        }
+        uint8_t getMsgType() const {
+            return msgType;
+        }
+        std::string getContent() const {
+            return content;
+        }
+        void updateContent(const std::string& newContent) {
+            content = newContent;
+        }
+    };
+    class ReadMsg:public Response {
+        std::vector<MsgCont> messages;
+    public:
+        explicit ReadMsg(const std::vector<char> &data);
+        void printMsgs(std::vector<Client>& clients) const;
+        ResponseCode getResponseCode() const override ;
+
+    };
+
 }
 
 #endif // READHEADER_H

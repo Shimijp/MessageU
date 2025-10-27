@@ -86,7 +86,7 @@ namespace Response {
 
     // ---- ClientLst ----
     ClientLst::ClientLst(std::vector<char>& data) {
-        const size_t entrySize = UUID_LENGTH + MAX_NAME_LENGTH;
+        constexpr size_t entrySize = UUID_LENGTH + MAX_NAME_LENGTH;
         if (entrySize == 0) {
             numClients = 0;
             return;
@@ -107,7 +107,7 @@ namespace Response {
                         entry.begin());
 
             Client entryClient(entry);
-            lst.emplace_back(entryClient);  // <-- דחיפה של Client בפועל
+            lst.emplace_back(entryClient);  // add to list
 
             i += entrySize;
         }
@@ -133,7 +133,7 @@ namespace Response {
     PubKey::PubKey(const std::vector<char>& data)
         : rsaPub(nullptr)
     {
-        const size_t need = KEY_LENGTH + UUID_LENGTH;
+        constexpr size_t need = KEY_LENGTH + UUID_LENGTH;
         if (data.size() < need) {
             throw std::runtime_error("short public key payload");
         }
@@ -165,6 +165,67 @@ namespace Response {
 
     bool PubKey::checkSuccess() const {
         return rsaPub != nullptr;
+    }
+    // ---- MsgSent ----
+    MsgSent::MsgSent(const std::vector<char>& data) {
+        size_t i = 0;
+        for (; i < UUID_LENGTH; i++) {
+            d_uuid.bytes[i] = static_cast<uint8_t>(data[i]);
+        }
+        msgID = static_cast<uint32_t>(data[i++]) |
+                (static_cast<uint32_t>(data[i++]) << 8) |
+                (static_cast<uint32_t>(data[i++]) << 16) |
+                (static_cast<uint32_t>(data[i++]) << 24);
+    }
+    ResponseCode MsgSent::getResponseCode() const {
+        return sendMsgSucc;
+    }
+    ReadMsg::ReadMsg(const std::vector<char> & data) {
+        size_t i = 0;
+
+            while(i + MSG_RSP_HEADER_SIZE <= data.size()) {
+                UUID16 s_uuid;
+                for (size_t j = 0; j < UUID_LENGTH; ++j) {
+                    s_uuid.bytes[j] = static_cast<uint8_t>(data[i++]);
+                }
+                const uint32_t msgID = static_cast<uint32_t>(data[i++]) |
+                                       (static_cast<uint32_t>(data[i++]) << 8) |
+                                       (static_cast<uint32_t>(data[i++]) << 16) |
+                                       (static_cast<uint32_t>(data[i++]) << 24);
+                const auto msgType = static_cast<uint8_t>(data[i++]);
+                const auto contentSize = static_cast<uint32_t>(data[i++]) |
+                                             (static_cast<uint32_t>(data[i++]) << 8) |
+                                             (static_cast<uint32_t>(data[i++]) << 16) |
+                                             (static_cast<uint32_t>(data[i++]) << 24);
+                if(!(msgType == reqSymKey || msgType == sendSymKey || msgType == sendTextMsg)) {
+                    throw std::runtime_error("invalid message type");
+                }
+                if((msgType == reqSymKey || msgType == sendSymKey ) && contentSize > 0 ) {
+                    throw std::runtime_error("invalid content size for sym key message");
+
+                }
+                if (i + contentSize > data.size()) {
+                    throw std::runtime_error("short buffer for message content");
+                }
+                const std::string content(data.begin() + static_cast<long long>(i),
+                                          data.begin() + static_cast<long long>(i)+ contentSize);
+
+                i += contentSize;
+                MsgCont msg(s_uuid, msgID, msgType, content);
+                if(msgType == reqSymKey) msg.updateContent("Request for a symmetric key.");
+                else if(msgType == sendSymKey) msg.updateContent("symmetric key received.");
+                messages.emplace_back(msg);
+            }
+
+    }
+    void ReadMsg::printMsgs(std::vector<Client> & clients) const {
+        for (const auto& msg : messages) {
+            std::cout << "FROM " << getNameFromUUID(clients,msg.getUUID()) << std::endl
+            << "Content:\n" <<  msg.getContent() << std::endl << "------------------" <<std::endl;
+        }
+    }
+    ResponseCode ReadMsg::getResponseCode() const {
+        return getMsgSucc;
     }
 
 } // namespace Response

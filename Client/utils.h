@@ -20,10 +20,13 @@
 #define REG_SUCC_SIZE (UUID_LENGTH) // Size of successful registration response
 #define MAX_CLIENT_LST_SIZE (MAX_PAYLOAD_SIZE/ (MAX_NAME_LENGTH + UUID_LENGTH)) // Maximum number of clients in list
 #define REGISTER_LENGTH  (MAX_NAME_LENGTH + KEY_LENGTH + HEADER_SIZE) // Length of registration request
-#define MENU "110) Register\n120)Request for client list\n130) Request for public Key\n0) exit client\n"
+#define MENU "110) Register\n120)Request for client list\n130) Request for public Key\n140) Request for waiting messages\n150) Send text message\n0) exit client\n"
 #define SERVER_INFO_PATH "C:/dev/MessageU/Client/server.info"
 #define CLIENT_INFO_PATH "C:/dev/MessageU/Client/client.info"
-
+#define SYM_KEY_LENGTH 16 // Length of symmetric key in bytes
+#define  SYM_KEY_ENC_LENGTH 128 // Length of encrypted symmetric key in bytes
+#define MSG_ID_SIZE 4
+#define MSG_RSP_HEADER_SIZE 25
 // Version enums for client and server
 enum versions {
     clientV1 = 1,

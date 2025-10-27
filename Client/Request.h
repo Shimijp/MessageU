@@ -61,6 +61,7 @@ public:
     uint8_t getType() const;
     uint32_t getSize() const;
     void setUUID(UUID16 uuid) ;
+    void setSize(uint32_t size);
     std::vector<uint8_t> toBytes() const override;
 };
 

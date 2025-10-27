@@ -35,6 +35,7 @@ int main() {
     std::string choice;
     bool should_exit = false;
     ClientD * client_d = nullptr;
+    std::vector<Client> client_list;
     if(checkFileExists(CLIENT_INFO_PATH)) {
         try {
             client_d = new ClientD();
@@ -62,9 +63,9 @@ int main() {
             std::cout << "Invalid input. Try again.\n";
             continue;
         }
-        bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d);
+        bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d, client_list);
         if(legalReq) {
-            Response::Response * resp = readAndHandle(s);
+            Response::Response * resp = readAndHandle(s, client_list);
             if(resp == nullptr) {
                 continue;
             }
@@ -78,6 +79,15 @@ int main() {
                     std::cerr << "Error saving client data: " << e.what() << "\n";
                 }
             }
+            else if(code == userListSucc) {
+                auto * clientLstResp = dynamic_cast<Response::ClientLst *>(resp);
+                client_list = clientLstResp->getClients();
+
+            }
+            else if(code == err) {
+                std::cerr << "Server returned an error response.\n";
+            }
+
             delete resp;
         }
 
@@ -89,5 +99,6 @@ int main() {
 
     }
     if (s.is_open()) s.close();
+    if(client_d != nullptr) delete client_d;
     return 0;
 }

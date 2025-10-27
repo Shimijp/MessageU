@@ -10,5 +10,5 @@
 #include <boost/asio.hpp>
 using boost::asio::ip::tcp;
 bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *address, const char *port);
-bool sendRequest(tcp::socket & s,  inputCode code,  bool * shouldExit, ClientD *&targetClient);
+bool sendRequest(tcp::socket & s,  inputCode code,  bool * shouldExit, ClientD *&targetClient, std::vector<Client> & client_list);
 #endif //REQHANDLER_H

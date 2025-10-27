@@ -20,7 +20,7 @@ class ClientD {
     std::string name; // Client's name
     UUID16 uuid;      // Unique identifier
     RSAPrivateWrapper *rsaPrivate; // RSA private key wrapper
-    uint8_t version = 1; // Protocol version
+    uint8_t version = 1; // Client version
 
 public:
     explicit ClientD(std::string name);// Construct client with name

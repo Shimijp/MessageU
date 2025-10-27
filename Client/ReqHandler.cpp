@@ -4,6 +4,7 @@
 
 #include "ReqHandler.h"
 
+#include "Messages.h"
 #include "RWClientD.h"
 
 bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *address, const char *port) {
@@ -22,8 +23,8 @@ bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *addres
     std::cout << "connected to: "  << res << std::endl;
     return true;
 }
-bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, ClientD*& targetClient) {
-    Header * header;
+bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, ClientD*& targetClient, std::vector<Client> & client_list) {
+    Header * header = nullptr;
     bool flag = false;
     switch (code) {
         case regC: {
@@ -67,11 +68,40 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, Client
             flag = true;
             break;
         }
+        case reqSend:
+            try {
+                if(targetClient == nullptr) {
+                    std::cerr << "Client not registered. Please register first.\n";
+                    return false;
+                }
+                std:: cout << "Enter target client's name:  max 254 chars\n";
+                std::string targetName;
+                std::getline(std::cin, targetName);
+                if(targetName.size() >= MAX_NAME_LENGTH) {
+                    std::cerr << "Name too long. Max 254 characters.\n";
+                    return false;
+                }
+
+                const UUID16 targetUuid = getUUUIDFromName( client_list, targetName );
+                header = new TextMsg(targetClient->getUUID(), targetUuid, {});
+                dynamic_cast<TextMsg *>(header)->getTextFromClient();
+                dynamic_cast<TextMsg *>(header)->UpdateSize();
+                flag = true;
+            }
+        catch (...){
+            std::cerr << "Error: Target client not found in client list. Please request client list first.\n";
+            return false;
+        }
+        break;
+        case reqMsgs:
+            header = new ReqMsg(targetClient->getUUID());
+            std::cout << "Requesting messages...\n";
+            flag = true;
+            break;
         case exitC:
             std::cout << "Exiting....\nGoodbye\n";
-            *shouldExit = true;
+            if(shouldExit) *shouldExit = true;
             return false;
-
         default:
             std::cerr << "Invalid command.\n";
             return false;
@@ -81,15 +111,16 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, Client
     std::vector<uint8_t> data = header->toBytes();
     boost::system::error_code ec;
     boost::asio::write(s, boost::asio::buffer(data), ec);
+    delete header;
 
 
 
-    if (ec) {
+    if (ec ) {
         std::cerr << "Error sending data: " << ec.message() << '\n';
         flag = false;
         if (shouldExit) *shouldExit = true;
     }
-    else {
+    else{
         std::cout << "Request sent successfully.\n";
     }
 
