@@ -1,14 +1,34 @@
 import selectors
 import socket
-
+import warnings
 from Requests import decode_header, HEADER_SIZE, MAX_PAYLOAD_SIZE
 from Response import GeneralError
 from requestHandler import handle_request
 from ClientDB import create_db
-from server import get_server_port
+sel = selectors.DefaultSelector()
+
+
+
+
+
+def get_server_port():
+    """Read port from myport.info or fall back to 1357."""
+    try:
+        with open("myport.info", "r") as f:
+            port = int(f.read().strip())
+            print(f"[init] Using port from file: {port}")
+            return port
+    except FileNotFoundError:
+        warnings.warn("[init] myport.info not found, using default 1357")
+    except ValueError:
+        warnings.warn("[init] invalid myport.info, using default 1357")
+    return 1357
+
+
+
+
 
 # Create a selector to handle multiple sockets concurrently
-sel = selectors.DefaultSelector()
 
 def start_server(host="0.0.0.0", port=1234):
     """
@@ -108,6 +128,7 @@ def service_connection(key: selectors.SelectorKey, mask: int):
             payload = bytes(in_buf[HEADER_SIZE:total])
             code = header["code"]
             client_id = header["client_id"]
+            print(f" Received request from {addr}: code={code}, payload_size={payload_len}")
 
 
             # consume exactly this frame
@@ -159,14 +180,7 @@ def run():
     except KeyboardInterrupt:
         print("Interrupted by user, closing...")
     finally:
-        try:
-            sel.close()
-        except Exception:
-            pass
-        try:
-            db.close()
-        except Exception:
-            pass
+        sel.close()
 
 if __name__ == "__main__":
     run()

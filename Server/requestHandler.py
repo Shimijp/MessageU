@@ -22,6 +22,19 @@ def handle_request(conn, data, req_code, client_id):
                     response = PubKey(req_id, key)
                 except Exception as e:
                     print(f"Error creating PubKey response: {e}", file=sys.stderr)
+        case ReqCodes.SEND_MSG.value:
+            msg_id, d_uuid = handle_message_request(conn, data, client_id)
+            if d_uuid and msg_id:
+                response = SavedMessage(d_uuid, msg_id)
+            else:
+                print("Failed to handle message request", file=sys.stderr)
+        case ReqCodes.REQ_MSG.value:
+            try:
+                msgs , size  = get_all_msgs(conn,  client_id)
+                response = ReqMsg(msgs, size)
+            except Exception as e:
+                print(f"Error creating ReqMsg response: {e}", file=sys.stderr)
+
         case _:
             print(f"no such code {req_code}!", file= sys.stderr)
     return response.to_bytes()

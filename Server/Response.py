@@ -5,6 +5,7 @@ import struct
 from Requests import *
 HEADER_RSP_FMT = "<BHI"
 REGISTER_RSP_FMT = "<16s"
+SAVED_MSG_FMT = "<16sI"
 class ResponseCode(Enum):
     REG_SUCCESS = 2100
     USR_LST = 2101
@@ -12,6 +13,7 @@ class ResponseCode(Enum):
     SVD_MSG = 2103
     PULL_MSGS = 2104
     GEN_ERR = 9000
+
 
 class Header:
     def __init__(self, version, code, payload_size):
@@ -58,7 +60,23 @@ class PubKey(Header):
         payload_bytes = struct.pack(PUB_KEY_RSP_FMT, self.uuid, self.key)
 
         return header_bytes+payload_bytes
+class SavedMessage(Header):
+    def __init__(self, d_uuid, msg_id):
+        super().__init__(version = 2 , code = ResponseCode.SVD_MSG.value, payload_size = struct.calcsize(SAVED_MSG_FMT))
+        self.d_uuid = d_uuid
+        self.msg_id = msg_id
+    def to_bytes(self):
+        header_bytes = super().to_bytes()
+        payload_bytes = struct.pack(SAVED_MSG_FMT, self.d_uuid, self.msg_id)
+        return header_bytes + payload_bytes
 
+class ReqMsg(Header):
+    def __init__(self, msgs, payload_size):
+        super().__init__(version = 2 , code = ResponseCode.PULL_MSGS.value, payload_size = payload_size)
+        self.messages = msgs
+    def to_bytes(self):
+        header_bytes = super().to_bytes()
+        return header_bytes+bytes(self.messages)
 class GeneralError(Header):
     def __init__(self):
         super().__init__(version = 2 , code = ResponseCode.GEN_ERR.value, payload_size = 0)

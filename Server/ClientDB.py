@@ -17,11 +17,13 @@ def create_db():
             );
         """)
         conn.executescript("""
-        CREATE TABLE IF NOT EXISTS messages (ID BLOB(4) PRIMRY KEY
-        TO_CLIENT BLOB(16) NOT NULL,
-        FROM_CLIENT BLOB(16) NOT NULL,
-        TYPE INTEGER NOT NULL,
-        CONTENT BLOB );""")
+        CREATE TABLE IF NOT EXISTS messages (
+        msg_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ToClient BLOB(16),
+        FromClient BLOB(16),
+        Type INTEGER,
+        Content BLOB
+    );""")
     except sql.Error as e:
         print(f"An error occurred while creating the database: {e}")
 
