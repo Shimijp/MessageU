@@ -36,6 +36,7 @@ int main() {
     bool should_exit = false;
     ClientD * client_d = nullptr;
     std::vector<Client> client_list;
+    std::map<UUID16, ClientSvd> svdClients;
     if(checkFileExists(CLIENT_INFO_PATH)) {
         try {
             client_d = new ClientD();
@@ -55,7 +56,7 @@ int main() {
             break;
         }
         std::cout << MENU;
-        std::getline(std::cin,choice);
+        std::getline(std::cin>>std::ws,choice);
         int num_choice = 0;
         try {
             num_choice = std::stoi(choice);
@@ -63,9 +64,9 @@ int main() {
             std::cout << "Invalid input. Try again.\n";
             continue;
         }
-        bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d, client_list);
+        bool legalReq = sendRequest(s, static_cast<inputCode>(num_choice), &should_exit, client_d, svdClients);
         if(legalReq) {
-            Response::Response * resp = readAndHandle(s, client_list);
+            Response::Response * resp = readAndHandle(s, svdClients);
             if(resp == nullptr) {
                 continue;
             }
@@ -82,11 +83,10 @@ int main() {
             else if(code == userListSucc) {
                 auto * clientLstResp = dynamic_cast<Response::ClientLst *>(resp);
                 client_list = clientLstResp->getClients();
+                updateMap(svdClients, client_list);
 
             }
-            else if(code == err) {
-                std::cerr << "Server returned an error response.\n";
-            }
+
 
             delete resp;
         }

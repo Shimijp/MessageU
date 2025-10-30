@@ -121,7 +121,7 @@ namespace Response {
         std::vector<MsgCont> messages;
     public:
         explicit ReadMsg(const std::vector<char> &data);
-        void printMsgs(std::vector<Client>& clients) const;
+        void printMsgs(std::map<UUID16, ClientSvd> & svdClients) const;
         ResponseCode getResponseCode() const override ;
 
     };

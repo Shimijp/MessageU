@@ -23,8 +23,7 @@ class TextMsg final : public Message {
 public:
     TextMsg(UUID16 uuid, UUID16 d_uuid, const std::vector<uint8_t>& encryptedText);
     std::vector<uint8_t> toBytes() const override;
-    std::string getEncryptedTextAsString() const;
-    void getTextFromClient();
+    void getTextFromClient(AESWrapper * aes);
     void UpdateSize();
 };
 

@@ -37,7 +37,12 @@ public:
     void setUUID(const UUID16& newUUID);
     void setRSAPrivateKeyFromBase64(const std::string& base64Key);
 };
-
-
-
+void updateMap(std::map<UUID16, ClientSvd>& svdClients, const std::vector<Client>& baseClients);
+bool canSendToClient(UUID16 uuid, const std::map<UUID16, ClientSvd> & clients);
+std::string findNameFromUUID(UUID16 uuid, const std::map<UUID16, ClientSvd> & clients);
+UUID16 findUUIDFromName(const std::string & name, const std::map<UUID16, ClientSvd> & clients);
+bool updateClientPubKey( UUID16 uuid, const RSAPublicWrapper * wrapper, std::map<UUID16, ClientSvd> & clients);
+bool updateClientSymKey( UUID16 uuid, const std::string & symKey, std::map<UUID16, ClientSvd> & clients);
+RSAPublicWrapper * getClientPubKey( UUID16 uuid, const std::map<UUID16, ClientSvd> & clients);
+AESWrapper * getClientSymKey( UUID16 uuid, const std::map<UUID16, ClientSvd> & clients);
 #endif //CLIENTD_H

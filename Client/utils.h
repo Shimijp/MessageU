@@ -10,6 +10,8 @@
 #include <limits>
 #include <cstdint>
 #include <string>
+#include "RSAWrapper.h"
+#include "AESWrapper.h"
 #define MAX_PAYLOAD_SIZE (std::numeric_limits<std::uint32_t>::max()) // Maximum payload size (4GB)
 #define HEADER_RESPONSE_SIZE 7 // Size of response header in bytes
 #define HEADER_SIZE 23 // Size of request header in bytes
@@ -20,7 +22,7 @@
 #define REG_SUCC_SIZE (UUID_LENGTH) // Size of successful registration response
 #define MAX_CLIENT_LST_SIZE (MAX_PAYLOAD_SIZE/ (MAX_NAME_LENGTH + UUID_LENGTH)) // Maximum number of clients in list
 #define REGISTER_LENGTH  (MAX_NAME_LENGTH + KEY_LENGTH + HEADER_SIZE) // Length of registration request
-#define MENU "110) Register\n120)Request for client list\n130) Request for public Key\n140) Request for waiting messages\n150) Send text message\n0) exit client\n"
+#define MENU "110) Register\n120)Request for client list\n130) Request for public Key\n140) Request for waiting messages\n150) Send text message\n151) Request for symetric key\n152)send symetryc key\n0) exit client\n"
 #define SERVER_INFO_PATH "C:/dev/MessageU/Client/server.info"
 #define CLIENT_INFO_PATH "C:/dev/MessageU/Client/client.info"
 #define SYM_KEY_LENGTH 16 // Length of symmetric key in bytes
@@ -40,6 +42,7 @@ typedef struct  UUID16
     //array of bytes for the uuid
     std::array<std::uint8_t, UUID_LENGTH> bytes{};
     bool operator==(const UUID16& other) const { return bytes == other.bytes; }
+    bool operator<(const UUID16& other) const { return bytes < other.bytes; }
 }UUID16;
 
 // Client: Structure representing a client with UUID and name
@@ -51,6 +54,17 @@ struct Client {
 
 
 };
+struct ClientSvd : Client {
+    std::string base64PubKey;
+    std::string symKey;
+
+    bool hasSymKey() const { return !symKey.empty(); }
+    bool hasPubKey() const { return !base64PubKey.empty(); }
+    explicit ClientSvd(const Client& base)
+        : Client(base) {}
+};
+
+
 
 // Request and response codes for messaging protocol
 enum RequestCode {

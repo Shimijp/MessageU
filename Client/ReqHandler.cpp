@@ -6,6 +6,7 @@
 
 #include "Messages.h"
 #include "RWClientD.h"
+#include "SymCrypt.h"
 
 bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *address, const char *port) {
     boost::system::error_code ec;
@@ -23,7 +24,7 @@ bool connectToServer(tcp::socket &s, tcp::resolver &resolver, const char *addres
     std::cout << "connected to: "  << res << std::endl;
     return true;
 }
-bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, ClientD*& targetClient, std::vector<Client> & client_list) {
+bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, ClientD*& targetClient, std::map<UUID16, ClientSvd>& svdClients) {
     Header * header = nullptr;
     bool flag = false;
     switch (code) {
@@ -76,15 +77,22 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, Client
                 }
                 std:: cout << "Enter target client's name:  max 254 chars\n";
                 std::string targetName;
-                std::getline(std::cin, targetName);
+                std::getline(std::cin >> std::ws, targetName);
                 if(targetName.size() >= MAX_NAME_LENGTH) {
                     std::cerr << "Name too long. Max 254 characters.\n";
                     return false;
                 }
 
-                const UUID16 targetUuid = getUUUIDFromName( client_list, targetName );
+
+
+                const UUID16 targetUuid = findUUIDFromName( targetName, svdClients );
+                AESWrapper * symKeyWrapper = getClientSymKey(findUUIDFromName( targetName, svdClients), svdClients);
+                if(symKeyWrapper == nullptr) {
+                    std::cerr << "Cannot send message. No symmetric key found for target client. Please request symmetric key first.\n";
+                    return false;
+                }
                 header = new TextMsg(targetClient->getUUID(), targetUuid, {});
-                dynamic_cast<TextMsg *>(header)->getTextFromClient();
+                dynamic_cast<TextMsg *>(header)->getTextFromClient(symKeyWrapper);
                 dynamic_cast<TextMsg *>(header)->UpdateSize();
                 flag = true;
             }
@@ -93,7 +101,77 @@ bool sendRequest(tcp::socket& s, const inputCode code, bool * shouldExit, Client
             return false;
         }
         break;
+        case reqSKey:
+            try {
+                if(targetClient == nullptr) {
+                    std::cerr << "Client not registered. Please register first.\n";
+                    return false;
+                }
+                std:: cout << "Enter target client's name:  max 254 chars\n";
+                std::string targetName;
+                std::getline(std::cin >>std::ws, targetName);
+                if(targetName.size() >= MAX_NAME_LENGTH) {
+                    std::cerr << "Name too long. Max 254 characters.\n";
+                    return false;
+                }
+
+                const UUID16 targetUuid = findUUIDFromName( targetName, svdClients );
+                header = new Message(targetClient->getUUID(), targetUuid, reqSymKey, 0);
+                flag = true;
+                break;
+
+
+            }
+        catch (std::runtime_error & e) {
+            std::cerr << "Cannot  send request:" << e.what() << std::endl;
+            return false;
+        }
+
+        case reqSendSKey:
+            try {
+                if(targetClient == nullptr) {
+                    std::cerr << "Client not registered. Please register first.\n";
+                    return false;
+                }
+                std:: cout << "Enter target client's name:  max 254 chars\n";
+                std::string targetName;
+                std::getline(std::cin >>std::ws, targetName);
+                if(targetName.size() >= MAX_NAME_LENGTH) {
+                    std::cerr << "Name too long. Max 254 characters.\n";
+                    return false;
+                }
+
+                const UUID16 targetUuid = findUUIDFromName( targetName, svdClients );
+                RSAPublicWrapper * pubKey = getClientPubKey(targetUuid, svdClients);
+                if(pubKey == nullptr) {
+                    std::cerr << "Cannot send symmetric key. No public key found for target client.\n";
+                    return false;
+                }
+                const std::string symKey = genKey();
+                try {
+                    std::string enc = encryptKey(symKey, pubKey);
+                    const std::vector<uint8_t> symKeyBytes = toBytes(enc);
+                    header = new SymKeyMsg(targetClient->getUUID(), targetUuid,symKeyBytes);
+                    flag = true;
+                    updateClientSymKey(targetUuid, symKey, svdClients);
+                    break;
+                }
+                catch (std::runtime_error & e) {
+                    std::cerr << "Failed to encrypt symmetric key: " << e.what() << std::endl;
+                    return false;
+                }
+
+
+
+            }
+        catch (std::runtime_error & e) {
+            std::cerr << "Cannot  send request:" << e.what() << std::endl;
+            return false;
+        }
+
+
         case reqMsgs:
+            if (!targetClient) { std::cerr << "Client not registered.\n"; return false; }
             header = new ReqMsg(targetClient->getUUID());
             std::cout << "Requesting messages...\n";
             flag = true;

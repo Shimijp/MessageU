@@ -50,7 +50,7 @@ std::string get_name() {
     std::string name;
     while (true) {
         std::cout << "Enter your name (max 255 chars): ";
-        std::getline(std::cin, name);
+        std::getline(std::cin >> std::ws, name);
 
         if (isValidAsciiUsername(name)) {
             return name;

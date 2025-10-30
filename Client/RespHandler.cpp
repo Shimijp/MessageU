@@ -24,7 +24,7 @@ std::vector<char> readExact(tcp::socket& s, std::size_t n) {
 
     return buf;
 }
-Response::Response* readAndHandle(tcp::socket& s, std::vector<Client> & clients) {
+Response::Response* readAndHandle(tcp::socket& s, std::map<UUID16, ClientSvd> & svdClientss) {
     const auto headerBuf = readExact(s, HEADER_RESPONSE_SIZE);
     const Response::Header header(headerBuf);
     const auto code = static_cast<ResponseCode>(header.getCode());
@@ -33,9 +33,9 @@ Response::Response* readAndHandle(tcp::socket& s, std::vector<Client> & clients)
     auto payload = readExact(s, size);
 
 
-    return handleResponse(code, payload, clients);
+    return handleResponse(code, payload, svdClientss);
 }
-Response::Response *  handleResponse(const ResponseCode code, std::vector<char> &data, std::vector<Client> & clients) {
+Response::Response *  handleResponse(const ResponseCode code, std::vector<char> &data, std::map<UUID16, ClientSvd> & svdClients) {
     Response::Response * resp = nullptr;
     std::cout << "Handling response code: " << static_cast<uint16_t>(code) <<  " size: " << data.size() << std::endl;
     if(!checkSize(code, data)) {
@@ -63,7 +63,17 @@ Response::Response *  handleResponse(const ResponseCode code, std::vector<char> 
         }
         case getPubKeySucc: {
             resp = new Response::PubKey(data);
-            std::cout << "Public key received successfully.\n";
+            std::cout << "Public key received successfully.\n" << Base64Wrapper::encode(dynamic_cast<Response::PubKey *>(resp)->getPubKey()->getPublicKey()) << std::endl;
+
+            const bool updated = updateClientPubKey(dynamic_cast<Response::PubKey *>(resp)->getUUID(),
+                                                    dynamic_cast<Response::PubKey *>(resp)->getPubKey(),
+                                                    svdClients);
+            if(!updated) {
+                std::cerr << "Failed to update stored public key for client.\n";
+
+            }
+
+
 
             break;
         }
@@ -77,10 +87,10 @@ Response::Response *  handleResponse(const ResponseCode code, std::vector<char> 
             {
             try {
                 resp = new Response::ReadMsg(data);
-                dynamic_cast<Response::ReadMsg *>(resp)->printMsgs(clients);
+                dynamic_cast<Response::ReadMsg *>(resp)->printMsgs(svdClients);
             }
-            catch (...) {
-                std::cerr << "Error parsing received message.\n";
+            catch (std::runtime_error & e) {
+                std::cerr << "Error parsing received message.\n" << e.what();
             }
 
 

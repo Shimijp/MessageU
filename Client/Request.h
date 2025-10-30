@@ -51,6 +51,7 @@ public:
     std::vector<uint8_t> toBytes() const override; // Serialize to bytes - returns HEADER_SIZE + UUID_LENGTH size vector
 };
 
+
 class Message : public Header {
     UUID16 d_uuid;
     uint8_t type;

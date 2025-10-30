@@ -9,8 +9,8 @@
 #include "Response.h"
 using boost::asio::ip::tcp;
 std::vector<char> readExact(tcp::socket& s, std::size_t n);
-Response::Response* readAndHandle(tcp::socket& s, std::vector<Client> & clients);
-Response::Response * handleResponse(ResponseCode code, std::vector<char> &data, std::vector<Client> & clients);
+Response::Response* readAndHandle(tcp::socket& s, std::map<UUID16, ClientSvd> & svdClients);
+Response::Response * handleResponse(ResponseCode code, std::vector<char> &data,std::map<UUID16, ClientSvd> & svdClientss);
 bool checkSize(ResponseCode code, const std::vector<char> & data);
 
 #endif //REQUESTHABDLER_H

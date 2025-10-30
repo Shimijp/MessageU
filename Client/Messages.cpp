@@ -11,9 +11,9 @@ ReqSymKey::ReqSymKey(const UUID16 uuid, const UUID16 d_uuid) :Message(uuid, d_uu
 std::vector<uint8_t> ReqSymKey::toBytes() const {
     return Message::toBytes();
 }
-SymKeyMsg::SymKeyMsg(const UUID16 uuid, const UUID16 d_uuid, const std::vector<uint8_t>& enc)
-    : Message(uuid, d_uuid, static_cast<uint8_t>(sendSymKey), static_cast<uint32_t>(enc.size())),
-      symKeyEnc(enc) {}
+SymKeyMsg::SymKeyMsg(const UUID16 uuid, const UUID16 d_uuid, const std::vector<uint8_t>& symKeyEnc)
+    : Message(uuid, d_uuid, static_cast<uint8_t>(sendSymKey), symKeyEnc.size()),
+      symKeyEnc(symKeyEnc) {}
 
 std::vector<uint8_t> SymKeyMsg::toBytes() const {
     if (symKeyEnc.size() != SYM_KEY_ENC_LENGTH) {
@@ -37,11 +37,19 @@ std::vector<uint8_t> TextMsg::toBytes() const {
     base.insert(base.end(), encryptedText.begin(), encryptedText.end()); // BODY
     return base;
 }
-void TextMsg::getTextFromClient() {
+void TextMsg::getTextFromClient(AESWrapper * aes) {
     std::string input;
     std::cout << "Enter the text: ";
-    std::getline(std::cin, input);
-    encryptedText = std::vector<uint8_t>(input.begin(), input.end());
+    std::string encrypted;
+    std::getline(std::cin>>std::ws, input);
+    try {
+        encrypted = aes->encrypt(input.c_str(), input.size());
+        input = encrypted;
+    } catch (const std::exception & e) {
+        throw std::runtime_error(std::string("TextMsg: Encryption failed: ") + e.what());
+        return;
+    }
+    encryptedText = std::vector<uint8_t>(encrypted.begin(), encrypted.end());
 }
 void TextMsg::UpdateSize() {
     this->payload_length += encryptedText.size();

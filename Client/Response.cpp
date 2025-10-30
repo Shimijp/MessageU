@@ -182,8 +182,8 @@ namespace Response {
     }
     ReadMsg::ReadMsg(const std::vector<char> & data) {
         size_t i = 0;
-
-            while(i + MSG_RSP_HEADER_SIZE <= data.size()) {
+        constexpr size_t ITEM_HDR = 16 + 4 + 1 + 4;
+        while(i + ITEM_HDR <= data.size()) {
                 UUID16 s_uuid;
                 for (size_t j = 0; j < UUID_LENGTH; ++j) {
                     s_uuid.bytes[j] = static_cast<uint8_t>(data[i++]);
@@ -192,15 +192,17 @@ namespace Response {
                                        (static_cast<uint32_t>(data[i++]) << 8) |
                                        (static_cast<uint32_t>(data[i++]) << 16) |
                                        (static_cast<uint32_t>(data[i++]) << 24);
-                const auto msgType = static_cast<uint8_t>(data[i++]);
-                const auto contentSize = static_cast<uint32_t>(data[i++]) |
+                const uint8_t msgType = static_cast<uint8_t>(data[i++]);
+                const uint32_t contentSize = static_cast<uint32_t>(data[i++]) |
                                              (static_cast<uint32_t>(data[i++]) << 8) |
                                              (static_cast<uint32_t>(data[i++]) << 16) |
                                              (static_cast<uint32_t>(data[i++]) << 24);
+                std::cout << "Debug: msgType=" << int(msgType)
+                        << ", contentSize=" <<  contentSize << std::endl;
                 if(!(msgType == reqSymKey || msgType == sendSymKey || msgType == sendTextMsg)) {
                     throw std::runtime_error("invalid message type");
                 }
-                if((msgType == reqSymKey || msgType == sendSymKey ) && contentSize > 0 ) {
+                if((msgType == reqSymKey ) && contentSize > 0 ) {
                     throw std::runtime_error("invalid content size for sym key message");
 
                 }
@@ -218,9 +220,9 @@ namespace Response {
             }
 
     }
-    void ReadMsg::printMsgs(std::vector<Client> & clients) const {
+    void ReadMsg::printMsgs(std::map<UUID16, ClientSvd> & svdClients) const {
         for (const auto& msg : messages) {
-            std::cout << "FROM " << getNameFromUUID(clients,msg.getUUID()) << std::endl
+            std::cout << "FROM " << findNameFromUUID(msg.getUUID(),svdClients) << std::endl
             << "Content:\n" <<  msg.getContent() << std::endl << "------------------" <<std::endl;
         }
     }
